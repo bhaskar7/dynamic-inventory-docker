@@ -1,0 +1,33 @@
+- hosts: all
+  gather_facts: no
+  vars_prompt:
+    - name: container_name
+      prompt: Enter Container Name
+      private: no
+  tasks:
+    - name: creating httpd container
+      docker_container:
+         name: "{{ container_name }}"
+         image: httpd
+         state: started
+         tty: yes
+         detach: yes
+
+    - name: retrieving container ip
+      docker_container_info:
+        name: "{{ container_name }}"
+      register: var
+    - name: printing ip of the container
+      debug:
+              var: var.container.NetworkSettings.IPAddress
+
+    - name: configuring the ip
+      blockinfile:
+        path: /web/host
+        block: |
+          [docker_container]
+          {{  var.container.NetworkSettings.IPAddress }} ansible_user=root ansible_ssh_pass=root ansible_connection=ssh
+    - name: getting inventory file
+      ansible.builtin.fetch:
+              src: /web/host
+              dest: /container/ip
